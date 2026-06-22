@@ -107,12 +107,6 @@
             cursor: not-allowed;
         }
 
-        #respinBtn {
-            display: none;
-            background: linear-gradient(135deg, #10b981, #059669);
-            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
-        }
-
         /* شاشة GTA V Wasted */
         .wasted-screen {
             position: fixed;
@@ -290,7 +284,52 @@
             return neededRotation + extraSpins;
         }
 
-function startSpin() {
+        function startSpin() {
+            if (isSpinning) return;
+            isSpinning = true;
+            
+            const btn = document.getElementById('spinBtn');
+            btn.disabled = true;
+
+            // --- حيلة فك قفل الأصوات للمتصفحات (Audio Unlock Trick) ---
+            const winAudio = document.getElementById('winSound');
+            const loseAudio = document.getElementById('loseSound');
+            
+            if(winAudio) {
+                winAudio.muted = true;
+                winAudio.play().then(() => {
+                    winAudio.pause();
+                    winAudio.currentTime = 0;
+                    winAudio.muted = false;
+                }).catch(e => {});
+            }
+            
+            if(loseAudio) {
+                loseAudio.muted = true;
+                loseAudio.play().then(() => {
+                    loseAudio.pause();
+                    loseAudio.currentTime = 0;
+                    loseAudio.muted = false;
+                }).catch(e => {});
+            }
+            // --------------------------------------------------------
+
+            // تشغيل صوت الدوران الأساسي
+            const spinAudio = document.getElementById('spinSound');
+            if(spinAudio) {
+                spinAudio.currentTime = 0;
+                spinAudio.play().catch(e => console.log('تعذر تشغيل صوت الدوران:', e));
+            }
+
+            const targetDegree = calculateTargetDegree();
+            
+            currentRotation += targetDegree - (currentRotation % 360);
+            if (currentRotation % 360 !== targetDegree % 360) {
+                 currentRotation += 360 * 5; 
+            }
+
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+        }
 
         canvas.addEventListener('transitionend', () => {
             isSpinning = false;
@@ -310,7 +349,7 @@ function startSpin() {
                 const loseAudio = document.getElementById('loseSound');
                 if(loseAudio) {
                     loseAudio.currentTime = 0;
-                    loseAudio.play().catch(e => console.log('تعذر تشغيل الصوت تلقائياً بسبب سياسات المتصفح:', e));
+                    loseAudio.play().catch(e => console.log('تعذر تشغيل الصوت تلقائياً:', e));
                 }
             } else {
                 // تفعيل تأثير الفوز
@@ -321,26 +360,19 @@ function startSpin() {
                 const winAudio = document.getElementById('winSound');
                 if(winAudio) {
                     winAudio.currentTime = 0;
-                    winAudio.play().catch(e => console.log('تعذر تشغيل الصوت تلقائياً بسبب سياسات المتصفح:', e));
+                    winAudio.play().catch(e => console.log('تعذر تشغيل الصوت تلقائياً:', e));
                 }
             }
 
+            // إخفاء الزر تماماً لعدم القدرة على الدوران مرة أخرى
             document.getElementById('spinBtn').style.display = 'none';
-            document.getElementById('respinBtn').style.display = 'block';
         });
-
-        function respin() {
-            closePopups();
-            setTimeout(() => {
-                startSpin();
-            }, 300);
-        }
 
         function closePopups() {
             document.getElementById('wastedScreen').classList.remove('active');
             document.getElementById('winScreen').classList.remove('active');
             
-            // إيقاف الأصوات عند إغلاق الشاشة إذا كانت لا تزال تعمل
+            // إيقاف الأصوات عند إغلاق الشاشة
             const winAudio = document.getElementById('winSound');
             const loseAudio = document.getElementById('loseSound');
             if(winAudio) { winAudio.pause(); winAudio.currentTime = 0; }
