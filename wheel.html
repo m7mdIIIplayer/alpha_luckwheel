@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>عجلة حظ Alpha</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #060b19;
+            --primary: #1e3a8a;
+            --accent: #3b82f6;
+            --text-light: #ffffff;
+            --gold: #f59e0b;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            background-image: radial-gradient(circle at center, #111d40 0%, #060b19 100%);
+            font-family: 'Cairo', sans-serif;
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* اللوغو */
+        .logo-container {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .logo-container img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            border: 2px solid var(--accent);
+        }
+
+        /* حاوية العجلة */
+        .wheel-wrapper {
+            position: relative;
+            margin: 40px auto;
+            width: 320px;
+            height: 320px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* المؤشر */
+        .pointer {
+            position: absolute;
+            top: -15px;
+            z-index: 10;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 35px solid #ffffff;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
+        }
+
+        /* العجلة */
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(255,255,255,0.2);
+            border: 4px solid var(--text-light);
+            transition: transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            transform: rotate(0deg);
+        }
+
+        /* الأزرار */
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            z-index: 5;
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-family: 'Cairo', sans-serif;
+            font-weight: 800;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        button:disabled {
+            background: #555;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        #respinBtn {
+            display: none;
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        /* شاشة GTA V Wasted */
+        .wasted-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: grayscale(100%) contrast(120%);
+            -webkit-backdrop-filter: grayscale(100%) contrast(120%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.5s ease-in;
+        }
+        .wasted-screen.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .wasted-text {
+            font-family: 'Impact', sans-serif;
+            color: #b91c1c;
+            font-size: 4rem;
+            letter-spacing: 8px;
+            text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            transform: scale(1.5);
+            transition: transform 1.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        .wasted-screen.active .wasted-text {
+            transform: scale(1);
+        }
+
+        /* شاشة الفوز */
+        .win-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(6, 11, 25, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        .win-screen.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .win-box {
+            background: linear-gradient(135deg, #1e3a8a, #060b19);
+            border: 2px solid var(--gold);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
+            transform: translateY(50px);
+            transition: transform 0.5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+        .win-screen.active .win-box {
+            transform: translateY(0);
+        }
+        .win-title { color: var(--gold); font-size: 2rem; margin: 0 0 10px 0; }
+        .win-amount { font-size: 2.5rem; font-weight: 800; color: #fff; margin: 0; }
+
+        /* زر الإغلاق للشاشات المنبثقة */
+        .close-btn {
+            margin-top: 20px;
+            background: transparent;
+            border: 1px solid white;
+            padding: 8px 20px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="winSound" src="win.wav"></audio>
+    <audio id="loseSound" src="lose.wav"></audio>
+    <audio id="spinSound" src="spin.wav" loop></audio>
+
+    <div class="logo-container">
+        <img src="alpha.jpg" alt="Alpha Logo">
+    </div>
+
+    <div class="wheel-wrapper">
+        <div class="pointer"></div>
+        <canvas id="wheelCanvas" width="600" height="600"></canvas>
+    </div>
+
+    <div class="btn-container">
+        <button id="spinBtn" onclick="startSpin()">تدوير العجلة 🎡</button>
+        <button id="respinBtn" onclick="respin()">إعادة اللف 🔄</button>
+    </div>
+
+    <div id="wastedScreen" class="wasted-screen">
+        <div class="wasted-text">WASTED</div>
+    </div>
+
+    <div id="winScreen" class="win-screen">
+        <div class="win-box">
+            <h2 class="win-title">🎉 مبروك!</h2>
+            <p class="win-amount" id="winAmountText">0</p>
+            <p style="font-size: 1.2rem; color: #ccc;">S.P</p>
+            <button class="close-btn" onclick="closePopups()">حسناً</button>
+        </div>
+    </div>
+
+    <script>
+        const prizes = [0, 5000, 10000, 15000, 25000, 100000, 250000];
+        
+        const colors = [
+            '#0a1128', // 0
+            '#1c2541', // 5k
+            '#3a506b', // 10k
+            '#1e3a8a', // 15k
+            '#2563eb', // 25k
+            '#3b82f6', // 100k
+            '#d97706'  // 250k
+        ];
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let targetValue = parseInt(urlParams.get('result'));
+        if (isNaN(targetValue) || !prizes.includes(targetValue)) {
+            targetValue = 0;
+        }
+
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = canvas.width / 2;
+        const sliceAngle = (2 * Math.PI) / prizes.length;
+
+        function drawWheel() {
+            for (let i = 0; i < prizes.length; i++) {
+                const angle = i * sliceAngle;
+                
+                ctx.beginPath();
+                ctx.fillStyle = colors[i];
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
+                ctx.lineTo(centerX, centerY);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(
+                    centerX + Math.cos(angle + sliceAngle / 2) * (radius * 0.7),
+                    centerY + Math.sin(angle + sliceAngle / 2) * (radius * 0.7)
+                );
+                ctx.rotate(angle + sliceAngle / 2);
+                
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 32px Cairo";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                
+                const text = prizes[i] === 0 ? "حظ أوفر" : prizes[i].toLocaleString();
+                ctx.fillText(text, 0, 0);
+                ctx.restore();
+            }
+        }
+        drawWheel();
+
+        let currentRotation = 0;
+        let isSpinning = false;
+
+        function calculateTargetDegree() {
+            const targetIndex = prizes.indexOf(targetValue);
+            const degreePerSlice = 360 / prizes.length;
+            const targetSliceCenterDegree = (targetIndex * degreePerSlice) + (degreePerSlice / 2);
+            let neededRotation = 270 - targetSliceCenterDegree;
+            const extraSpins = 360 * 6;
+            return neededRotation + extraSpins;
+        }
+
+        function startSpin() {
+            if (isSpinning) return;
+            isSpinning = true;
+            
+            const btn = document.getElementById('spinBtn');
+            btn.disabled = true;
+
+            // تشغيل صوت الدوران
+            const spinAudio = document.getElementById('spinSound');
+            if(spinAudio) {
+                spinAudio.currentTime = 0;
+                spinAudio.play().catch(e => console.log('تعذر تشغيل صوت الدوران:', e));
+            }
+
+            const targetDegree = calculateTargetDegree();
+            
+            currentRotation += targetDegree - (currentRotation % 360);
+            if (currentRotation % 360 !== targetDegree % 360) {
+                 currentRotation += 360 * 5; 
+            }
+
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+        }
+
+        canvas.addEventListener('transitionend', () => {
+            isSpinning = false;
+            
+            // إيقاف صوت الدوران بمجرد توقف العجلة
+            const spinAudio = document.getElementById('spinSound');
+            if(spinAudio) {
+                spinAudio.pause();
+                spinAudio.currentTime = 0;
+            }
+            
+            if (targetValue === 0) {
+                // تفعيل تأثير الخسارة (Wasted)
+                document.getElementById('wastedScreen').classList.add('active');
+                
+                // تشغيل صوت الخسارة
+                const loseAudio = document.getElementById('loseSound');
+                if(loseAudio) {
+                    loseAudio.currentTime = 0;
+                    loseAudio.play().catch(e => console.log('تعذر تشغيل الصوت تلقائياً بسبب سياسات المتصفح:', e));
+                }
+            } else {
+                // تفعيل تأثير الفوز
+                document.getElementById('winAmountText').innerText = targetValue.toLocaleString();
+                document.getElementById('winScreen').classList.add('active');
+                
+                // تشغيل صوت الفوز
+                const winAudio = document.getElementById('winSound');
+                if(winAudio) {
+                    winAudio.currentTime = 0;
+                    winAudio.play().catch(e => console.log('تعذر تشغيل الصوت تلقائياً بسبب سياسات المتصفح:', e));
+                }
+            }
+
+            document.getElementById('spinBtn').style.display = 'none';
+            document.getElementById('respinBtn').style.display = 'block';
+        });
+
+        function respin() {
+            closePopups();
+            setTimeout(() => {
+                startSpin();
+            }, 300);
+        }
+
+        function closePopups() {
+            document.getElementById('wastedScreen').classList.remove('active');
+            document.getElementById('winScreen').classList.remove('active');
+            
+            // إيقاف الأصوات عند إغلاق الشاشة إذا كانت لا تزال تعمل
+            const winAudio = document.getElementById('winSound');
+            const loseAudio = document.getElementById('loseSound');
+            if(winAudio) { winAudio.pause(); winAudio.currentTime = 0; }
+            if(loseAudio) { loseAudio.pause(); loseAudio.currentTime = 0; }
+        }
+    </script>
+</body>
+</html>
