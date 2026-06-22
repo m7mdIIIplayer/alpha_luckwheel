@@ -290,14 +290,37 @@
             return neededRotation + extraSpins;
         }
 
-        function startSpin() {
+function startSpin() {
             if (isSpinning) return;
             isSpinning = true;
             
             const btn = document.getElementById('spinBtn');
             btn.disabled = true;
 
-            // تشغيل صوت الدوران
+            // --- 🚨 بداية حيلة فك قفل الأصوات للمتصفحات (Audio Unlock) 🚨 ---
+            const winAudio = document.getElementById('winSound');
+            const loseAudio = document.getElementById('loseSound');
+            
+            if(winAudio) {
+                winAudio.muted = true; // كتم الصوت
+                winAudio.play().then(() => {
+                    winAudio.pause(); // إيقاف فوري
+                    winAudio.currentTime = 0;
+                    winAudio.muted = false; // إعادة تفعيل الصوت للمستقبل
+                }).catch(e => {});
+            }
+            
+            if(loseAudio) {
+                loseAudio.muted = true;
+                loseAudio.play().then(() => {
+                    loseAudio.pause();
+                    loseAudio.currentTime = 0;
+                    loseAudio.muted = false;
+                }).catch(e => {});
+            }
+            // --- 🚨 نهاية حيلة فك قفل الأصوات 🚨 ---
+
+            // تشغيل صوت الدوران الأساسي
             const spinAudio = document.getElementById('spinSound');
             if(spinAudio) {
                 spinAudio.currentTime = 0;
@@ -310,6 +333,9 @@
             if (currentRotation % 360 !== targetDegree % 360) {
                  currentRotation += 360 * 5; 
             }
+
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+        }
 
             canvas.style.transform = `rotate(${currentRotation}deg)`;
         }
