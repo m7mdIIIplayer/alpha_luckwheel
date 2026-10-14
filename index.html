@@ -1,383 +1,218 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>عجلة حظ Alpha</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #060b19;
-            --primary: #1e3a8a;
-            --accent: #3b82f6;
-            --text-light: #ffffff;
-            --gold: #f59e0b;
-        }
-
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg-color);
-            background-image: radial-gradient(circle at center, #111d40 0%, #060b19 100%);
-            font-family: 'Cairo', sans-serif;
-            color: var(--text-light);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        /* اللوغو */
-        .logo-container {
-            margin-top: 30px;
-            text-align: center;
-        }
-        .logo-container img {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-            border: 2px solid var(--accent);
-        }
-
-        /* حاوية العجلة */
-        .wheel-wrapper {
-            position: relative;
-            margin: 40px auto;
-            width: 320px;
-            height: 320px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        /* المؤشر */
-        .pointer {
-            position: absolute;
-            top: -15px;
-            z-index: 10;
-            width: 0;
-            height: 0;
-            border-left: 20px solid transparent;
-            border-right: 20px solid transparent;
-            border-top: 35px solid #ffffff;
-            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
-        }
-
-        /* العجلة */
-        canvas {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(255,255,255,0.2);
-            border: 4px solid var(--text-light);
-            transition: transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-            transform: rotate(0deg);
-        }
-
-        /* الأزرار */
-        .btn-container {
-            display: flex;
-            gap: 15px;
-            z-index: 5;
-        }
-
-        button {
-            background: linear-gradient(135deg, var(--accent), var(--primary));
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 1.2rem;
-            font-family: 'Cairo', sans-serif;
-            font-weight: 800;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
-            transition: transform 0.2s, box-shadow 0.2s;
-            outline: none;
-        }
-        button:active {
-            transform: scale(0.95);
-        }
-        button:disabled {
-            background: #555;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
-
-        /* شاشة GTA V Wasted */
-        .wasted-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: grayscale(100%) contrast(120%);
-            -webkit-backdrop-filter: grayscale(100%) contrast(120%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 1.5s ease-in;
-        }
-        .wasted-screen.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-        .wasted-text {
-            font-family: 'Impact', sans-serif;
-            color: #b91c1c;
-            font-size: 4rem;
-            letter-spacing: 8px;
-            text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-            transform: scale(1.5);
-            transition: transform 1.5s cubic-bezier(0.25, 0.1, 0.25, 1);
-        }
-        .wasted-screen.active .wasted-text {
-            transform: scale(1);
-        }
-
-        /* شاشة الفوز */
-        .win-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(6, 11, 25, 0.85);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.5s ease;
-        }
-        .win-screen.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-        .win-box {
-            background: linear-gradient(135deg, #1e3a8a, #060b19);
-            border: 2px solid var(--gold);
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            box-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
-            transform: translateY(50px);
-            transition: transform 0.5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-        }
-        .win-screen.active .win-box {
-            transform: translateY(0);
-        }
-        .win-title { color: var(--gold); font-size: 2rem; margin: 0 0 10px 0; }
-        .win-amount { font-size: 2.5rem; font-weight: 800; color: #fff; margin: 0; }
-
-        /* زر الإغلاق للشاشات المنبثقة */
-        .close-btn {
-            margin-top: 20px;
-            background: transparent;
-            border: 1px solid white;
-            padding: 8px 20px;
-            font-size: 1rem;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#04101c" />
+<title>ALPHA | عجلة الحظ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{color-scheme:dark;--ink:#f7fbff;--muted:#91afbf;--gold:#f4bd44;--cyan:#65d8f2;--bg:#040b12;--line:#23445a}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{min-height:100%;background:var(--bg)}
+  body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;color:var(--ink);
+    background:radial-gradient(ellipse 80% 38% at 49% 51%,#184962a3 0%,transparent 72%),radial-gradient(circle at 15% 78%,#0b3455 0,transparent 45%),linear-gradient(140deg,#02070b,#091a2a 65%,#02060b);overflow-x:hidden}
+  body:before{content:"";pointer-events:none;position:fixed;inset:0;opacity:.19;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.42' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E")}
+  .app{position:relative;margin:auto;width:min(100%,510px);min-height:100vh;padding:15px 16px max(22px,env(safe-area-inset-bottom));display:flex;flex-direction:column}
+  .jackpot{position:relative;background:linear-gradient(122deg,#35301a,#121518 53%,#090e16);border:1px solid #9e7b22;border-right:3px solid #f7c530;border-radius:4px 13px 4px 13px;padding:9px 13px 11px;box-shadow:0 12px 32px #0009,inset 0 0 26px #ffe26512}
+  .jacktop{display:flex;justify-content:space-between;align-items:end;gap:8px}
+  .jtitle{font-size:13px;letter-spacing:.6px;font-weight:1000}.jactive{border:1px solid #d7b635;border-radius:9px;color:#ffe165;font-size:10px;padding:1px 7px;margin-inline-start:4px}
+  .jright{text-align:left;line-height:1.05}.smallgold{font-size:10px;color:#ffe360;font-weight:850}.jamount{font-size:clamp(27px,8vw,38px);font-weight:1000;letter-spacing:-.5px;text-shadow:0 2px 0 #413112;direction:ltr;font-variant-numeric:tabular-nums}
+  .barwrap{display:flex;gap:9px;align-items:center;margin-top:9px}.track{height:9px;flex:1;border-radius:9px;overflow:hidden;background:#0a1625;position:relative;border:1px solid #50648a}
+  .fill{height:100%;width:0%;background:repeating-linear-gradient(120deg,#78eafa 0 10px,#5a99fd 10px 21px,#9e73ff 21px 33px);box-shadow:0 0 18px #88edff;transition:width .7s ease}
+  .track:after{content:"";position:absolute;inset:0;background:linear-gradient(transparent,#fff3,transparent)}.bar-caption{font-size:10px;color:#fff095;white-space:nowrap;font-weight:900}
+  .disclaimer{margin:7px 0 0;text-align:center;color:#a1bbc9;font-size:10px}
+  .wheel-area{position:relative;width:100%;max-width:455px;aspect-ratio:1;margin:16px auto 8px;display:grid;place-items:center;filter:drop-shadow(0 18px 20px #0008)}
+  .wheel-area:before{content:"";position:absolute;inset:9%;border-radius:50%;box-shadow:0 0 60px 13px #2876a755;pointer-events:none}
+  #wheel{display:block;width:100%;height:100%;will-change:transform;transform:rotate(0deg);transform-origin:center}
+  .pointer{position:absolute;z-index:5;width:15%;height:17%;top:-2.1%;left:42.5%;filter:drop-shadow(0px 4px 3px #000a)}
+  .pointer svg{width:100%;height:100%}.hub{position:absolute;z-index:4;inset:41%;border-radius:50%;display:grid;place-items:center;text-align:center;color:#442003;font-weight:1000;font-size:clamp(13px,4vw,19px);font-style:italic;letter-spacing:-1px;background:radial-gradient(circle at 25% 18%,#fff3a0,#f5b534 50%,#ab5b0d 78%);border:4px solid #ffde66;box-shadow:inset 0 0 4px #fff,0 0 2px 3px #683604,inset 0 -9px 9px #9e5209}
+  .game-control{display:flex;align-items:center;gap:9px;margin-top:-1px}.spin{flex:1;min-height:54px;cursor:pointer;border:1px solid #e5b84e;border-radius:10px;background:linear-gradient(100deg,#fed875,#d88b1b 53%,#f8d15a);box-shadow:inset 0 1px 3px #fff9,0 5px 0 #7f4811,0 8px 25px #0009;color:#251509;font-weight:1000;font-size:19px;letter-spacing:.2px;transition:filter .2s,transform .1s}
+  .spin:active{transform:translateY(3px);box-shadow:0 2px 0 #7f4811}.spin:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.5)}
+  .mini-stat{min-width:94px;min-height:54px;padding:7px 9px;border:1px solid #526675;background:#091421;border-radius:9px;text-align:center}.mini-stat label{font-size:10px;display:block;color:#b4c4d2;font-weight:850}.mini-stat strong{font-size:25px;line-height:1.1;display:block;color:#fff}
+  .account{margin:18px 0 12px;display:flex;align-items:center;gap:10px;justify-content:space-between}.person{display:flex;align-items:center;gap:9px;min-width:0}.avatar{width:39px;height:39px;flex-shrink:0;border-radius:50%;border:1px solid #517387;display:grid;place-items:center;background:#263340;font-size:21px}
+  .who{min-width:0}.who b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.who small{display:block;font-size:11px;color:#9ab2c5;white-space:nowrap}.other{background:#0c1c2b;border:1px solid #416176;border-radius:8px;padding:9px 11px;color:#d8f1ff;cursor:pointer;font:700 12px inherit;white-space:nowrap}
+  .panel{margin-top:10px;border:1px solid #25465b;border-radius:12px;padding:13px;background:linear-gradient(145deg,#0d2131ec,#08121dde);box-shadow:0 9px 30px #0004}
+  .panelhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.panelhead b{font-size:14px}.badge{color:#83e9ff;font-size:11px;font-weight:800}
+  .bonuses{display:grid;gap:8px}.bonus{border:1px solid #3a6a77;border-radius:9px;padding:10px 11px;background:#0e2d37;display:flex;justify-content:space-between;align-items:center;gap:7px}.bonus strong{color:#99ffee;font-size:15px}.bonus small{color:#bbcedb;font-size:11px}.empty{padding:12px 4px;color:#92acb9;text-align:center;font-size:12px}
+  .tip{font-size:11px;line-height:1.65;color:#8ea8b5;margin:10px 1px 0;text-align:center}.error{display:none;border:1px solid #a74c4c;border-radius:8px;margin-top:10px;padding:10px;color:#ffd0d0;background:#3b1519;font-size:12px;text-align:center}
+  .overlay{position:fixed;inset:0;z-index:10;background:#01070dd9;backdrop-filter:blur(7px);display:none;align-items:center;justify-content:center;padding:18px}.overlay.show{display:flex}.dialog{max-width:410px;width:100%;background:linear-gradient(#102e42,#08131f);border:1px solid #6cb1c3;border-radius:18px;padding:20px;box-shadow:0 25px 90px #000d;text-align:center}.bigemoji{font-size:48px}.dialog h2{font-size:22px;margin:8px 0;color:#ffdb77}.dialog p{color:#cbdce8;font-size:14px;line-height:1.65;white-space:pre-line}.close{font:850 14px system-ui;border-radius:9px;border:1px solid #397587;background:#143446;color:#e2f9ff;cursor:pointer;padding:11px 17px;width:100%;margin-top:8px}.historyRows{max-height:56vh;overflow:auto;text-align:right}.entry{padding:12px 3px;border-bottom:1px solid #28506a;display:flex;gap:10px;justify-content:space-between;align-items:center}.entry b{display:block;font-size:13px}.entry small{font-size:11px;color:#9db6c7}.entry time{color:#96aabe;display:block;font-size:11px;direction:ltr;text-align:left}
+  @media(max-width:370px){.app{padding-inline:10px}.wheel-area{margin-top:12px}.jtitle{font-size:12px}.jamount{font-size:27px}.other{padding:8px;font-size:11px}}
+  @media(min-height:790px){.wheel-area{margin-top:22px;margin-bottom:15px}}
+  @media(prefers-reduced-motion:reduce){.fill{transition:none}}
+</style>
 </head>
 <body>
+<main class="app">
+  <section class="jackpot" aria-label="عداد الجاكبوت">
+    <div class="jacktop"><div><span class="jtitle">JACKPOT</span><span class="jactive">ALPHA</span></div><div class="jright"><span class="smallgold">Prize counter</span><div id="jackpot" class="jamount">$0.00</div></div></div>
+    <div class="barwrap"><div class="track"><div id="progress" class="fill"></div></div><span class="bar-caption">$700 MAX</span></div>
+  </section>
+  <p class="disclaimer">الجاكبوت عدّاد ترويجي يُصفّر تلقائياً، وليس جائزة قابلة للربح.</p>
+  <section class="wheel-area" aria-label="عجلة حظ ALPHA">
+    <canvas id="wheel" width="900" height="900"></canvas>
+    <div class="hub">ALPHA</div>
+    <div class="pointer" aria-hidden="true"><svg viewBox="0 0 90 120"><defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff6a7"/><stop offset=".5" stop-color="#ffb826"/><stop offset="1" stop-color="#8e4507"/></linearGradient></defs><path d="M11 22Q45 -3 79 22L49 99Q45 112 41 99Z" fill="url(#gold)" stroke="#ffde68" stroke-width="5"/><path d="M26 24L45 84L62 24" fill="none" stroke="#fff0a3" stroke-width="5" opacity=".85"/></svg></div>
+  </section>
+  <div class="game-control"><button id="spin" class="spin" disabled>⏳ جاري التحميل...</button><div class="mini-stat"><label>SPINS</label><strong id="spins">—</strong></div></div>
+  <p id="error" class="error" role="alert"></p>
+  <div class="account"><div class="person"><div class="avatar">👤</div><div class="who"><b id="userName">ALPHA PLAYER</b><small id="userHandle">@ALPHA</small></div></div><button id="historyBtn" class="other" type="button">↶ آخر 10 لفات</button></div>
+  <section class="panel"><div class="panelhead"><b>🎁 البونصات المفعّلة حالياً</b><span class="badge">صالحة 24 ساعة</span></div><div id="bonuses" class="bonuses"><div class="empty">ستظهر بونصاتك هنا بعد فتح الجولة.</div></div></section>
+  <p class="tip">🎟️ لفة واحدة لكل عملية شحن ناجحة بقيمة 100,000 ل.س قديمة (1,000 جديدة) أو أكثر.<br>البونصات تنطبق مرة واحدة على أول شحن ناجح خلال صلاحيتها، ويمكن جمعها.</p>
+</main>
+<div class="overlay" id="resultModal"><div class="dialog"><div id="resultEmoji" class="bigemoji">🎉</div><h2 id="resultTitle">ALPHA</h2><p id="resultDescription"></p><button class="close" id="resultClose">متابعة</button></div></div>
+<div class="overlay" id="historyModal"><div class="dialog"><h2>🎡 آخر 10 لفات</h2><div id="historyRows" class="historyRows"></div><button class="close" id="historyClose">إغلاق</button></div></div>
+<script>
+(()=>{'use strict';
+ const tg=window.Telegram?.WebApp;
+ tg?.ready();tg?.expand();
+ if(tg){try{tg.setHeaderColor('#04101c');tg.setBackgroundColor('#04101c')}catch(_){}}
+ const $=id=>document.getElementById(id), spinBtn=$('spin');
+ const ticket=new URLSearchParams(location.search).get('ticket');
+ const isDemo=new URLSearchParams(location.search).get('demo')==='1';
+ const initData=tg?.initData||'';
+ const username=tg?.initDataUnsafe?.user;
+ if(username){$('userName').textContent=[username.first_name,username.last_name].filter(Boolean).join(' ')||'ALPHA PLAYER';$('userHandle').textContent=username.username?'@'+username.username:'Telegram User';}
+ // Same 12 sectors and the same server-side targetIndex order.
+ // Only the visible text and its canvas layout are changed here.
+ const slices=[
+   {text:'5%',icon:'🎁',fill:'#12273f',type:'bonus'},
+   {text:'HARD LUCK',icon:'✦',fill:'#9bddf5',type:'lose'},
+   {text:'50 ألف',icon:'💰',fill:'#0b2439',type:'money'},
+   {text:'10%',icon:'🎁',fill:'#9bddf5',type:'bonus'},
+   {text:'مليون',icon:'＄',fill:'#172d4a',type:'money'},
+   {text:'HARD LUCK',icon:'✦',fill:'#a3e0f7',type:'lose'},
+   {text:'100 ألف',icon:'💰',fill:'#0d2940',type:'money'},
+   {text:'5%',icon:'🎁',fill:'#86d5ee',type:'bonus'},
+   {text:'500 ألف',icon:'＄',fill:'#142641',type:'money'},
+   {text:'HARD LUCK',icon:'✦',fill:'#9bdcf2',type:'lose'},
+   {text:'250 ألف',icon:'💰',fill:'#11334c',type:'money'},
+   {text:'JACKPOT',icon:'★',fill:'#77cda5',type:'jackpot'},
+ ];
+ const c=$('wheel'),ctx=c.getContext('2d'),N=slices.length,C=450,R=408,step=2*Math.PI/N;
 
-    <audio id="winSound" src="win.wav"></audio>
-    <audio id="loseSound" src="lose.wav"></audio>
-    <audio id="spinSound" src="spin.wav" loop></audio>
-
-    <div class="logo-container">
-        <img src="alpha.jpg" alt="Alpha Logo">
-    </div>
-
-    <div class="wheel-wrapper">
-        <div class="pointer"></div>
-        <canvas id="wheelCanvas" width="600" height="600"></canvas>
-    </div>
-
-    <div class="btn-container">
-        <button id="spinBtn" onclick="startSpin()">تدوير العجلة 🎡</button>
-    </div>
-
-    <div id="wastedScreen" class="wasted-screen">
-        <div class="wasted-text">WASTED</div>
-    </div>
-
-    <div id="winScreen" class="win-screen">
-        <div class="win-box">
-            <h2 class="win-title">🎉 مبروك!</h2>
-            <p class="win-amount" id="winAmountText">0</p>
-            <p style="font-size: 1.2rem; color: #ccc;">S.P</p>
-            <button class="close-btn" onclick="closePopups()">حسناً</button>
-        </div>
-    </div>
-
-    <script>
-        const prizes = [0, 5000, 10000, 15000, 25000, 100000, 250000];
-        
-        const colors = [
-            '#0a1128', // 0
-            '#1c2541', // 5k
-            '#3a506b', // 10k
-            '#1e3a8a', // 15k
-            '#2563eb', // 25k
-            '#3b82f6', // 100k
-            '#d97706'  // 250k
-        ];
-
-        const urlParams = new URLSearchParams(window.location.search);
-        let targetValue = parseInt(urlParams.get('result'));
-        if (isNaN(targetValue) || !prizes.includes(targetValue)) {
-            targetValue = 0;
-        }
-
-        const canvas = document.getElementById('wheelCanvas');
-        const ctx = canvas.getContext('2d');
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const radius = canvas.width / 2;
-        const sliceAngle = (2 * Math.PI) / prizes.length;
-
-        function drawWheel() {
-            for (let i = 0; i < prizes.length; i++) {
-                const angle = i * sliceAngle;
-                
-                ctx.beginPath();
-                ctx.fillStyle = colors[i];
-                ctx.moveTo(centerX, centerY);
-                ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
-                ctx.lineTo(centerX, centerY);
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.save();
-                ctx.translate(
-                    centerX + Math.cos(angle + sliceAngle / 2) * (radius * 0.7),
-                    centerY + Math.sin(angle + sliceAngle / 2) * (radius * 0.7)
-                );
-                ctx.rotate(angle + sliceAngle / 2);
-                
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 32px Cairo";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                
-                const text = prizes[i] === 0 ? "حظ أوفر" : prizes[i].toLocaleString();
-                ctx.fillText(text, 0, 0);
-                ctx.restore();
-            }
-        }
-        drawWheel();
-
-        let currentRotation = 0;
-        let isSpinning = false;
-
-        function calculateTargetDegree() {
-            const targetIndex = prizes.indexOf(targetValue);
-            const degreePerSlice = 360 / prizes.length;
-            const targetSliceCenterDegree = (targetIndex * degreePerSlice) + (degreePerSlice / 2);
-            let neededRotation = 270 - targetSliceCenterDegree;
-            const extraSpins = 360 * 6;
-            return neededRotation + extraSpins;
-        }
-
-        function startSpin() {
-            if (isSpinning) return;
-            isSpinning = true;
-            
-            const btn = document.getElementById('spinBtn');
-            btn.disabled = true;
-
-            // --- حيلة فك قفل الأصوات للمتصفحات (Audio Unlock Trick) ---
-            const winAudio = document.getElementById('winSound');
-            const loseAudio = document.getElementById('loseSound');
-            
-            if(winAudio) {
-                winAudio.muted = true;
-                winAudio.play().then(() => {
-                    winAudio.pause();
-                    winAudio.currentTime = 0;
-                    winAudio.muted = false;
-                }).catch(e => {});
-            }
-            
-            if(loseAudio) {
-                loseAudio.muted = true;
-                loseAudio.play().then(() => {
-                    loseAudio.pause();
-                    loseAudio.currentTime = 0;
-                    loseAudio.muted = false;
-                }).catch(e => {});
-            }
-            // --------------------------------------------------------
-
-            // تشغيل صوت الدوران الأساسي
-            const spinAudio = document.getElementById('spinSound');
-            if(spinAudio) {
-                spinAudio.currentTime = 0;
-                spinAudio.play().catch(e => console.log('تعذر تشغيل صوت الدوران:', e));
-            }
-
-            const targetDegree = calculateTargetDegree();
-            
-            currentRotation += targetDegree - (currentRotation % 360);
-            if (currentRotation % 360 !== targetDegree % 360) {
-                 currentRotation += 360 * 5; 
-            }
-
-            canvas.style.transform = `rotate(${currentRotation}deg)`;
-        }
-
-        canvas.addEventListener('transitionend', () => {
-            isSpinning = false;
-            
-            // إيقاف صوت الدوران بمجرد توقف العجلة
-            const spinAudio = document.getElementById('spinSound');
-            if(spinAudio) {
-                spinAudio.pause();
-                spinAudio.currentTime = 0;
-            }
-            
-            if (targetValue === 0) {
-                // تفعيل تأثير الخسارة (Wasted)
-                document.getElementById('wastedScreen').classList.add('active');
-                
-                // تشغيل صوت الخسارة
-                const loseAudio = document.getElementById('loseSound');
-                if(loseAudio) {
-                    loseAudio.currentTime = 0;
-                    loseAudio.play().catch(e => console.log('تعذر تشغيل الصوت تلقائياً:', e));
-                }
-            } else {
-                // تفعيل تأثير الفوز
-                document.getElementById('winAmountText').innerText = targetValue.toLocaleString();
-                document.getElementById('winScreen').classList.add('active');
-                
-                // تشغيل صوت الفوز
-                const winAudio = document.getElementById('winSound');
-                if(winAudio) {
-                    winAudio.currentTime = 0;
-                    winAudio.play().catch(e => console.log('تعذر تشغيل الصوت تلقائياً:', e));
-                }
-            }
-
-            // إخفاء الزر تماماً لعدم القدرة على الدوران مرة أخرى
-            document.getElementById('spinBtn').style.display = 'none';
-        });
-
-        function closePopups() {
-            document.getElementById('wastedScreen').classList.remove('active');
-            document.getElementById('winScreen').classList.remove('active');
-            
-            // إيقاف الأصوات عند إغلاق الشاشة
-            const winAudio = document.getElementById('winSound');
-            const loseAudio = document.getElementById('loseSound');
-            if(winAudio) { winAudio.pause(); winAudio.currentTime = 0; }
-            if(loseAudio) { loseAudio.pause(); loseAudio.currentTime = 0; }
-        }
-    </script>
+ // Fit every label INSIDE its own 30° sector, including on small screens.
+ // Canvas is 900x900 and scales down uniformly on phones.
+ function wheelLabel(s){
+   if(s.type==='lose')return [{text:'HARD',size:31},{text:'LUCK',size:31}];
+   if(s.type==='bonus')return [{text:s.text,size:48}];
+   if(s.type==='jackpot')return [{text:'JACK',size:30},{text:'POT',size:30}];
+   if(s.type==='money'){
+     if(s.text==='مليون')return [{text:'1',size:37},{text:'مليون',size:24}];
+     const amount=s.text.split(' ')[0];
+     return [{text:amount,size:37},{text:'ألف',size:25}];
+   }
+   return [{text:s.text,size:30}];
+ }
+ function drawSliceText(s,i,center){
+   const radius=239;
+   const cos=Math.cos(center),sin=Math.sin(center);
+   const normal=(center+Math.PI*2)%(Math.PI*2);
+   const flip=normal>0 && normal<Math.PI; // keep lower-half labels upright
+   const lines=wheelLabel(s);
+   const lightSector=(i%2===1);
+   ctx.save();
+   ctx.translate(C+cos*radius,C+sin*radius);
+   ctx.rotate(center+Math.PI/2+(flip?Math.PI:0));
+   ctx.textAlign='center';ctx.textBaseline='middle';
+   ctx.direction='ltr';
+   ctx.fillStyle=lightSector?'#123249':'#f7fbff';
+   ctx.strokeStyle=lightSector?'#d7f5ff':'#092133';
+   ctx.lineWidth=2.5;ctx.lineJoin='round';
+   const lineHeight=35;
+   lines.forEach((line,j)=>{
+     const y=(j-(lines.length-1)/2)*lineHeight;
+     // Calculate usable wedge width at the innermost edge of each line.
+     // Extra padding prevents text from touching the radial boundaries.
+     const minRadius=radius-Math.abs(y)-line.size/2;
+     const maxWidth=2*minRadius*Math.sin(step/2)-19;
+     let size=line.size;
+     ctx.font=`900 ${size}px Tahoma,Arial,sans-serif`;
+     while(ctx.measureText(line.text).width>maxWidth && size>17){
+       size--;
+       ctx.font=`900 ${size}px Tahoma,Arial,sans-serif`;
+     }
+     ctx.strokeText(line.text,0,y,maxWidth);
+     ctx.fillText(line.text,0,y,maxWidth);
+   });
+   ctx.restore();
+ }
+ function drawWheel(){
+   ctx.clearRect(0,0,900,900);
+   const halo=ctx.createRadialGradient(C,C,320,C,C,439);halo.addColorStop(0,'#386d92');halo.addColorStop(.8,'#61bce1');halo.addColorStop(1,'#193348');
+   ctx.beginPath();ctx.arc(C,C,435,0,2*Math.PI);ctx.fillStyle=halo;ctx.fill();ctx.lineWidth=8;ctx.strokeStyle='#102e47';ctx.stroke();
+   slices.forEach((s,i)=>{
+     const center=-Math.PI/2+i*step,start=center-step/2,end=center+step/2;
+     ctx.beginPath();ctx.moveTo(C,C);ctx.arc(C,C,R,start,end);ctx.closePath();ctx.fillStyle=s.fill;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#173f55';ctx.stroke();
+     const cos=Math.cos(center),sin=Math.sin(center);
+     ctx.save();ctx.translate(C+cos*331,C+sin*331);
+     ctx.beginPath();ctx.arc(0,0,42,0,Math.PI*2);ctx.fillStyle=(i%2?'#f5fdff':'#c6effa');ctx.fill();
+     ctx.font='bold 40px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#142e4c';ctx.fillText(s.icon,0,2);ctx.restore();
+     drawSliceText(s,i,center);
+   });
+   ctx.beginPath();ctx.arc(C,C,410,0,Math.PI*2);ctx.lineWidth=11;ctx.strokeStyle='#58c4ee';ctx.stroke();
+   ctx.beginPath();ctx.arc(C,C,394,0,Math.PI*2);ctx.lineWidth=2;ctx.strokeStyle='#b3edfc88';ctx.stroke();
+ }
+ drawWheel();
+ let currentRotation=0,playing=false,round=null;
+ function setError(message){$('error').style.display=message?'block':'none';$('error').textContent=message||'';}
+ function showAmount(num){return Number(num||0).toLocaleString('en-US')}
+ function updateJackpot(value){$('jackpot').textContent='$'+showAmount(value)+'.00';$('progress').style.width=Math.min(100,Number(value||0)/700*100)+'%';}
+ async function post(path,body={}){
+   const controller=new AbortController(),abort=setTimeout(()=>controller.abort(),12000);
+   try{const res=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData,...body}),cache:'no-store',signal:controller.signal});const obj=await res.json();if(!res.ok||!obj.success)throw Error(obj.error||'تعذر الاتصال بالسيرفر');return obj}
+   finally{clearTimeout(abort)}
+ }
+ function formatTime(unix){try{return new Date(unix*1000).toLocaleString('ar-SY',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return ''}}
+ function displayBonuses(list){let holder=$('bonuses');holder.replaceChildren();if(!list?.length){holder.innerHTML='<div class="empty">ما عندك بونصات فعالة حالياً. جرّب حظك مع ALPHA ✨</div>';return;}
+   list.forEach(b=>{let row=document.createElement('div');row.className='bonus';const left=document.createElement('strong');left.textContent='BONUS +'+b.percent+'%';const right=document.createElement('small');const remaining=Math.max(0,b.expiresAt-Math.floor(Date.now()/1000));right.textContent='متبقّي '+Math.floor(remaining/3600)+' ساعة و '+Math.floor(remaining%3600/60)+' دقيقة';row.append(left,right);holder.appendChild(row)})
+ }
+ async function refreshState(){if(isDemo){$('spins').textContent='1';updateJackpot(125);displayBonuses([]);return}
+   const state=await post('/api/alpha-wheel/state');$('spins').textContent=state.spins;updateJackpot(state.jackpot);displayBonuses(state.bonuses);
+ }
+ function showModal(title,description,emoji){$('resultTitle').textContent=title;$('resultDescription').textContent=description;$('resultEmoji').textContent=emoji;$('resultModal').classList.add('show')}
+ function playSound(){try{const A=window.AudioContext||window.webkitAudioContext;if(!A)return;const ac=new A(),o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.setValueAtTime(700,ac.currentTime);o.frequency.exponentialRampToValueAtTime(280,ac.currentTime+.1);g.gain.setValueAtTime(.08,ac.currentTime);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.13);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.14);o.onended=()=>ac.close()}catch(_){}}
+ function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+ async function animateTo(index){
+   const targetIndex=Number(index),degrees=360/N;
+   if(!Number.isInteger(targetIndex)||targetIndex<0||targetIndex>=N)throw Error('نتيجة العجلة غير صالحة');
+   const current=((currentRotation%360)+360)%360;
+   let advance=(360-((current+(targetIndex*degrees))%360))%360;
+   if(advance<4)advance+=360;
+   const final=currentRotation+6*360+advance;
+   const start=currentRotation,delta=final-start,begin=performance.now(),duration=6300;
+   let lastTick=-1;
+   await new Promise(resolve=>{
+     function frame(now){let t=Math.min(1,(now-begin)/duration),smooth=1-Math.pow(1-t,4.2);currentRotation=start+delta*smooth;
+       c.style.transform=`rotate(${currentRotation}deg)`;
+       let tick=Math.floor(currentRotation/degrees);if(tick!==lastTick&&t>.02){lastTick=tick; if(t<.86&&tick%2===0)playSound()}
+       if(t<1)requestAnimationFrame(frame);else resolve()}
+     requestAnimationFrame(frame)
+   });
+   currentRotation=final;
+ }
+ function resultText(r){if(r.bonusPercent)return ['🎁 بونص +'+r.bonusPercent+'%','صار عندك بونص على أول عملية شحن ناجحة خلال 24 ساعة.','🎁'];if(r.award)return ['🎉 مبروك! '+showAmount(r.award)+' ل.س قديمة','الجائزة أضيفت تلقائياً إلى رصيدك داخل البوت.','💰'];return ['✨ حظ أوفر باللفة الجاية','حاول مجدداً بعد حصولك على لفة من عملية شحن مؤهلة.','🎡']}
+ async function startSpin(){if(playing||!round)return;playing=true;spinBtn.disabled=true;spinBtn.textContent='🎡 العجلة تدور...';setError('');try{
+    await animateTo(round.targetIndex);if(navigator.vibrate)navigator.vibrate([60,30,90]);const [title,body,icon]=resultText(round);showModal(title,body,icon);
+    if(!isDemo)await refreshState();else displayBonuses([]);
+    spinBtn.textContent='✅ تم عرض نتيجة اللفة';
+   }catch(e){setError(e.message||'خطأ أثناء العرض');spinBtn.textContent='حاول عرض النتيجة مجدداً';spinBtn.disabled=false;playing=false}
+ }
+ async function init(){if(isDemo){$('userName').textContent='ALPHA DEMO';$('userHandle').textContent='وضع معاينة - لا توجد أرباح حقيقية';round={targetIndex:0,bonusPercent:5,award:0};await refreshState();spinBtn.textContent='🎡 لف العجلة (معاينة)';spinBtn.disabled=false;return}
+   if(!initData){setError('لازم تفتح اللعبة من زر عجلة ALPHA داخل بوت Telegram، وليس من المتصفح الخارجي.');spinBtn.textContent='افتح من تيليغرام';return}
+   if(!ticket){await refreshState();setError('ما في تذكرة لفة بهذا الرابط. ارجع لبوت ALPHA واضغط زر عجلة الحظ.');spinBtn.textContent='بانتظار تذكرة اللفة';return}
+   try{round=await post('/api/alpha-wheel/ticket',{ticket});$('spins').textContent=round.spinsRemaining;updateJackpot(round.jackpotAtSpin);spinBtn.textContent='🎡 لف العجلة الآن';spinBtn.disabled=false}
+   catch(e){setError(e.message);spinBtn.textContent='تعذّر تحميل النتيجة';try{await refreshState()}catch(_){}}
+ }
+ $('spin').addEventListener('click',startSpin);
+ $('resultClose').addEventListener('click',()=>$('resultModal').classList.remove('show'));
+ $('historyClose').addEventListener('click',()=>$('historyModal').classList.remove('show'));
+ $('historyBtn').addEventListener('click',async()=>{const rows=$('historyRows');rows.textContent='جاري جلب سجل اللفات...';$('historyModal').classList.add('show');try{
+   const d=isDemo?{history:[]}:await post('/api/alpha-wheel/history');rows.replaceChildren();if(!d.history.length){rows.innerHTML='<div class="empty">ما عندك أي لفات مسجّلة حالياً.</div>';return}
+   d.history.forEach(h=>{const div=document.createElement('div');div.className='entry';const item=document.createElement('div'),title=document.createElement('b'),date=document.createElement('small');title.textContent=h.bonusPercent?'🎁 بونص '+h.bonusPercent+'%':h.amount?'💰 '+showAmount(h.amount)+' ل.س':'🎡 حظ أوفر';date.textContent=h.roundId;item.append(title,date);const time=document.createElement('time');time.textContent=formatTime(h.createdAt);div.append(item,time);rows.appendChild(div)})
+  }catch(e){rows.textContent=e.message||'تعذر جلب السجل'}});
+ init();
+})();
+</script>
 </body>
 </html>
