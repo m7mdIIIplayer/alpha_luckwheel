@@ -62,6 +62,10 @@
 </main>
 <div class="overlay" id="resultModal"><div class="dialog"><div id="resultEmoji" class="bigemoji">🎉</div><h2 id="resultTitle">ALPHA</h2><p id="resultDescription"></p><button class="close" id="resultClose">متابعة</button></div></div>
 <div class="overlay" id="historyModal"><div class="dialog"><h2>🎡 آخر 10 لفات</h2><div id="historyRows" class="historyRows"></div><button class="close" id="historyClose">إغلاق</button></div></div>
+<!-- WAV sound effects; all loaded by the same FastAPI app as the wheel. -->
+<audio id="wheelSpinSound" preload="auto" src="/alpha-wheel/sounds/spin.wav" loop></audio>
+<audio id="wheelWinSound" preload="auto" src="/alpha-wheel/sounds/win.wav"></audio>
+<audio id="wheelLoseSound" preload="auto" src="/alpha-wheel/sounds/lose.wav"></audio>
 <script>
 (()=>{'use strict';
  const tg=window.Telegram?.WebApp;
@@ -171,7 +175,21 @@
    const state=await post('/api/alpha-wheel/state');$('spins').textContent=state.spins;updateJackpot(state.jackpot);displayBonuses(state.bonuses);
  }
  function showModal(title,description,emoji){$('resultTitle').textContent=title;$('resultDescription').textContent=description;$('resultEmoji').textContent=emoji;$('resultModal').classList.add('show')}
- function playSound(){try{const A=window.AudioContext||window.webkitAudioContext;if(!A)return;const ac=new A(),o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.setValueAtTime(700,ac.currentTime);o.frequency.exponentialRampToValueAtTime(280,ac.currentTime+.1);g.gain.setValueAtTime(.08,ac.currentTime);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.13);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.14);o.onended=()=>ac.close()}catch(_){}}
+ // Only the provided .wav effects are used; no synthesized tick sounds.
+ const sounds={spin:$('wheelSpinSound'),win:$('wheelWinSound'),lose:$('wheelLoseSound')};
+ sounds.spin.volume=.70;sounds.win.volume=.95;sounds.lose.volume=.90;
+ function stopAudio(sound){if(!sound)return;try{sound.pause();sound.currentTime=0}catch(_){}}
+ function playAudio(sound){
+   if(!sound)return;
+   try{stopAudio(sound);const promise=sound.play();if(promise?.catch)promise.catch(()=>{});}catch(_){}
+ }
+ function stopAllAudio(){Object.values(sounds).forEach(stopAudio)}
+ function beginSpinAudio(){stopAllAudio();playAudio(sounds.spin)}
+ function finishSpinAudio(won){
+   stopAudio(sounds.spin);
+   playAudio(won?sounds.win:sounds.lose);
+ }
+ window.addEventListener('pagehide',stopAllAudio);
  function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
  async function animateTo(index){
    const targetIndex=Number(index),degrees=360/N;
@@ -181,22 +199,26 @@
    if(advance<4)advance+=360;
    const final=currentRotation+6*360+advance;
    const start=currentRotation,delta=final-start,begin=performance.now(),duration=6300;
-   let lastTick=-1;
    await new Promise(resolve=>{
      function frame(now){let t=Math.min(1,(now-begin)/duration),smooth=1-Math.pow(1-t,4.2);currentRotation=start+delta*smooth;
        c.style.transform=`rotate(${currentRotation}deg)`;
-       let tick=Math.floor(currentRotation/degrees);if(tick!==lastTick&&t>.02){lastTick=tick; if(t<.86&&tick%2===0)playSound()}
        if(t<1)requestAnimationFrame(frame);else resolve()}
      requestAnimationFrame(frame)
    });
    currentRotation=final;
  }
  function resultText(r){if(r.bonusPercent)return ['🎁 بونص +'+r.bonusPercent+'%','صار عندك بونص على أول عملية شحن ناجحة خلال 24 ساعة.','🎁'];if(r.award)return ['🎉 مبروك! '+showAmount(r.award)+' ل.س قديمة','الجائزة أضيفت تلقائياً إلى رصيدك داخل البوت.','💰'];return ['✨ حظ أوفر باللفة الجاية','حاول مجدداً بعد حصولك على لفة من عملية شحن مؤهلة.','🎡']}
- async function startSpin(){if(playing||!round)return;playing=true;spinBtn.disabled=true;spinBtn.textContent='🎡 العجلة تدور...';setError('');try{
-    await animateTo(round.targetIndex);if(navigator.vibrate)navigator.vibrate([60,30,90]);const [title,body,icon]=resultText(round);showModal(title,body,icon);
-    if(!isDemo)await refreshState();else displayBonuses([]);
-    spinBtn.textContent='✅ تم عرض نتيجة اللفة';
-   }catch(e){setError(e.message||'خطأ أثناء العرض');spinBtn.textContent='حاول عرض النتيجة مجدداً';spinBtn.disabled=false;playing=false}
+ async function startSpin(){if(playing||!round)return;playing=true;spinBtn.disabled=true;spinBtn.textContent='🎡 العجلة تدور...';setError('');
+   // Must be called directly on the user's tap to satisfy mobile/Telegram audio policies.
+   beginSpinAudio();
+   try{
+     await animateTo(round.targetIndex);
+     finishSpinAudio(Number(round.bonusPercent||0)>0||Number(round.award||0)>0);
+     if(navigator.vibrate)navigator.vibrate([60,30,90]);
+     const [title,body,icon]=resultText(round);showModal(title,body,icon);
+     if(!isDemo)await refreshState();else displayBonuses([]);
+     spinBtn.textContent='✅ تم عرض نتيجة اللفة';
+   }catch(e){stopAudio(sounds.spin);setError(e.message||'خطأ أثناء العرض');spinBtn.textContent='حاول عرض النتيجة مجدداً';spinBtn.disabled=false;playing=false}
  }
  async function init(){if(isDemo){$('userName').textContent='ALPHA DEMO';$('userHandle').textContent='وضع معاينة - لا توجد أرباح حقيقية';round={targetIndex:0,bonusPercent:5,award:0};await refreshState();spinBtn.textContent='🎡 لف العجلة (معاينة)';spinBtn.disabled=false;return}
    if(!initData){setError('لازم تفتح اللعبة من زر عجلة ALPHA داخل بوت Telegram، وليس من المتصفح الخارجي.');spinBtn.textContent='افتح من تيليغرام';return}
