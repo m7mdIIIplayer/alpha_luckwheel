@@ -48,7 +48,6 @@
     <div class="jacktop"><div><span class="jtitle">JACKPOT</span><span class="jactive">ALPHA</span></div><div class="jright"><span class="smallgold">Prize counter</span><div id="jackpot" class="jamount">$0.00</div></div></div>
     <div class="barwrap"><div class="track"><div id="progress" class="fill"></div></div><span class="bar-caption">$700 MAX</span></div>
   </section>
-  <p class="disclaimer">الجاكبوت عدّاد ترويجي يُصفّر تلقائياً، وليس جائزة قابلة للربح.</p>
   <section class="wheel-area" aria-label="عجلة حظ ALPHA">
     <canvas id="wheel" width="900" height="900"></canvas>
     <div class="hub">ALPHA</div>
@@ -57,24 +56,44 @@
   <div class="game-control"><button id="spin" class="spin" disabled>⏳ جاري التحميل...</button><div class="mini-stat"><label>SPINS</label><strong id="spins">—</strong></div></div>
   <p id="error" class="error" role="alert"></p>
   <div class="account"><div class="person"><div class="avatar">👤</div><div class="who"><b id="userName">ALPHA PLAYER</b><small id="userHandle">@ALPHA</small></div></div><button id="historyBtn" class="other" type="button">↶ آخر 10 لفات</button></div>
-  <section class="panel"><div class="panelhead"><b>🎁 البونصات المفعّلة حالياً</b><span class="badge">صالحة 24 ساعة</span></div><div id="bonuses" class="bonuses"><div class="empty">ستظهر بونصاتك هنا بعد فتح الجولة.</div></div></section>
+  <section class="panel"><div class="panelhead"><b>🎁 البونصات المفعّلة حالياً</b><span class="badge">صالحة 24 ساعة</span></div><div id="bonuses" class="bonuses"><div class="empty">ستظهر البونصات المفعّلة وقت إصدار الرابط.</div></div></section>
+  <section class="panel"><div class="panelhead"><b>✅ بونصات العجلة المصروفة على الشحن</b><span class="badge">سجل آخر 10</span></div><div id="usedBonuses" class="bonuses"><div class="empty">لا يوجد سجل لاستخدام بونصات العجلة.</div></div></section>
   <p class="tip">🎟️ لفة واحدة لكل عملية شحن ناجحة بقيمة 100,000 ل.س قديمة (1,000 جديدة) أو أكثر.<br>البونصات تنطبق مرة واحدة على أول شحن ناجح خلال صلاحيتها، ويمكن جمعها.</p>
+<p class="tip">ℹ️ هذه المعلومات لقطة وقت إصدار الرابط. لمعرفة أحدث بونصاتك ولفاتك، افتح لفة جديدة من البوت.</p>
 </main>
 <div class="overlay" id="resultModal"><div class="dialog"><div id="resultEmoji" class="bigemoji">🎉</div><h2 id="resultTitle">ALPHA</h2><p id="resultDescription"></p><button class="close" id="resultClose">متابعة</button></div></div>
 <div class="overlay" id="historyModal"><div class="dialog"><h2>🎡 آخر 10 لفات</h2><div id="historyRows" class="historyRows"></div><button class="close" id="historyClose">إغلاق</button></div></div>
-<!-- WAV sound effects; all loaded by the same FastAPI app as the wheel. -->
-<audio id="wheelSpinSound" preload="auto" src="/alpha-wheel/sounds/spin.wav" loop></audio>
-<audio id="wheelWinSound" preload="auto" src="/alpha-wheel/sounds/win.wav"></audio>
-<audio id="wheelLoseSound" preload="auto" src="/alpha-wheel/sounds/lose.wav"></audio>
+<!-- WAV effects deployed alongside index.html on alpha-luckwheel.vercel.app -->
+<audio id="wheelSpinSound" preload="auto" src="./spin.wav" loop></audio>
+<audio id="wheelWinSound" preload="auto" src="./win.wav"></audio>
+<audio id="wheelLoseSound" preload="auto" src="./lose.wav"></audio>
 <script>
 (()=>{'use strict';
  const tg=window.Telegram?.WebApp;
  tg?.ready();tg?.expand();
  if(tg){try{tg.setHeaderColor('#04101c');tg.setBackgroundColor('#04101c')}catch(_){}}
  const $=id=>document.getElementById(id), spinBtn=$('spin');
- const ticket=new URLSearchParams(location.search).get('ticket');
- const isDemo=new URLSearchParams(location.search).get('demo')==='1';
- const initData=tg?.initData||'';
+ const params=new URLSearchParams(location.search);
+ const isDemo=params.get('demo')==='1';
+ const suppliedIndex=params.has('targetIndex')?Number(params.get('targetIndex')):NaN;
+ const suppliedAward=params.has('award')?Number(params.get('award')):NaN;
+ const suppliedBonus=params.has('bonusPercent')?Number(params.get('bonusPercent')):NaN;
+ // All results are fixed by ALPHA bot BEFORE the URL is sent.
+ // Query parameters change visuals ONLY; no balance or bonus is credited here.
+ const validRound=Number.isInteger(suppliedIndex)&&suppliedIndex>=0&&suppliedIndex<12&&
+     Number.isInteger(suppliedAward)&&suppliedAward>=0&&
+     [0,5,10].includes(suppliedBonus);
+ // The bot passes compact integer snapshots using '.' as record separator
+ // and ',' as field separator; absolutely no JSON / API / fetch needed.
+ function readRows(key,columns,limit=30){
+   const value=params.get(key)||'';
+   if(value.length>5000)return [];
+   return value.split('.').filter(Boolean).slice(0,limit).map(part=>part.split(',').map(Number))
+     .filter(row=>row.length===columns&&row.every(n=>Number.isSafeInteger(n)&&n>=0));
+ }
+ const activeBonuses=readRows('active',2).map(([percent,expiresAt])=>({percent,expiresAt}));
+ const usedBonuses=readRows('used',3,10).map(([percent,amount,appliedAt])=>({percent,amount,appliedAt}));
+ const history=readRows('history',4,10).map(([targetIndex,amount,bonusPercent,createdAt])=>({targetIndex,amount,bonusPercent,createdAt}));
  const username=tg?.initDataUnsafe?.user;
  if(username){$('userName').textContent=[username.first_name,username.last_name].filter(Boolean).join(' ')||'ALPHA PLAYER';$('userHandle').textContent=username.username?'@'+username.username:'Telegram User';}
  // Same 12 sectors and the same server-side targetIndex order.
@@ -162,17 +181,18 @@
  function setError(message){$('error').style.display=message?'block':'none';$('error').textContent=message||'';}
  function showAmount(num){return Number(num||0).toLocaleString('en-US')}
  function updateJackpot(value){$('jackpot').textContent='$'+showAmount(value)+'.00';$('progress').style.width=Math.min(100,Number(value||0)/700*100)+'%';}
- async function post(path,body={}){
-   const controller=new AbortController(),abort=setTimeout(()=>controller.abort(),12000);
-   try{const res=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData,...body}),cache:'no-store',signal:controller.signal});const obj=await res.json();if(!res.ok||!obj.success)throw Error(obj.error||'تعذر الاتصال بالسيرفر');return obj}
-   finally{clearTimeout(abort)}
- }
  function formatTime(unix){try{return new Date(unix*1000).toLocaleString('ar-SY',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return ''}}
  function displayBonuses(list){let holder=$('bonuses');holder.replaceChildren();if(!list?.length){holder.innerHTML='<div class="empty">ما عندك بونصات فعالة حالياً. جرّب حظك مع ALPHA ✨</div>';return;}
    list.forEach(b=>{let row=document.createElement('div');row.className='bonus';const left=document.createElement('strong');left.textContent='BONUS +'+b.percent+'%';const right=document.createElement('small');const remaining=Math.max(0,b.expiresAt-Math.floor(Date.now()/1000));right.textContent='متبقّي '+Math.floor(remaining/3600)+' ساعة و '+Math.floor(remaining%3600/60)+' دقيقة';row.append(left,right);holder.appendChild(row)})
  }
- async function refreshState(){if(isDemo){$('spins').textContent='1';updateJackpot(125);displayBonuses([]);return}
-   const state=await post('/api/alpha-wheel/state');$('spins').textContent=state.spins;updateJackpot(state.jackpot);displayBonuses(state.bonuses);
+ function displayUsedBonuses(list){
+   const holder=$('usedBonuses');holder.replaceChildren();
+   if(!list?.length){holder.innerHTML='<div class="empty">لا توجد عمليات صرف حديثة مسجّلة.</div>';return;}
+   list.forEach(b=>{const row=document.createElement('div');row.className='bonus';
+     const a=document.createElement('strong');a.textContent='+'+b.percent+'% = '+showAmount(b.amount)+' ل.س';
+     const info=document.createElement('small');info.textContent=formatTime(b.appliedAt);
+     row.append(a,info);holder.appendChild(row);
+   });
  }
  function showModal(title,description,emoji){$('resultTitle').textContent=title;$('resultDescription').textContent=description;$('resultEmoji').textContent=emoji;$('resultModal').classList.add('show')}
  // Only the provided .wav effects are used; no synthesized tick sounds.
@@ -208,31 +228,60 @@
    currentRotation=final;
  }
  function resultText(r){if(r.bonusPercent)return ['🎁 بونص +'+r.bonusPercent+'%','صار عندك بونص على أول عملية شحن ناجحة خلال 24 ساعة.','🎁'];if(r.award)return ['🎉 مبروك! '+showAmount(r.award)+' ل.س قديمة','الجائزة أضيفت تلقائياً إلى رصيدك داخل البوت.','💰'];return ['✨ حظ أوفر باللفة الجاية','حاول مجدداً بعد حصولك على لفة من عملية شحن مؤهلة.','🎡']}
- async function startSpin(){if(playing||!round)return;playing=true;spinBtn.disabled=true;spinBtn.textContent='🎡 العجلة تدور...';setError('');
-   // Must be called directly on the user's tap to satisfy mobile/Telegram audio policies.
+ async function startSpin(){
+   if(playing||!round)return;
+   playing=true;spinBtn.disabled=true;spinBtn.textContent='🎡 العجلة تدور...';setError('');
    beginSpinAudio();
    try{
      await animateTo(round.targetIndex);
-     finishSpinAudio(Number(round.bonusPercent||0)>0||Number(round.award||0)>0);
+     finishSpinAudio(Number(round.bonusPercent)>0||Number(round.award)>0);
      if(navigator.vibrate)navigator.vibrate([60,30,90]);
      const [title,body,icon]=resultText(round);showModal(title,body,icon);
-     if(!isDemo)await refreshState();else displayBonuses([]);
      spinBtn.textContent='✅ تم عرض نتيجة اللفة';
-   }catch(e){stopAudio(sounds.spin);setError(e.message||'خطأ أثناء العرض');spinBtn.textContent='حاول عرض النتيجة مجدداً';spinBtn.disabled=false;playing=false}
+   }catch(e){
+     stopAudio(sounds.spin);setError(e.message||'خطأ أثناء العرض');
+     spinBtn.textContent='حاول عرض النتيجة مجدداً';spinBtn.disabled=false;playing=false;
+   }
  }
- async function init(){if(isDemo){$('userName').textContent='ALPHA DEMO';$('userHandle').textContent='وضع معاينة - لا توجد أرباح حقيقية';round={targetIndex:0,bonusPercent:5,award:0};await refreshState();spinBtn.textContent='🎡 لف العجلة (معاينة)';spinBtn.disabled=false;return}
-   if(!initData){setError('لازم تفتح اللعبة من زر عجلة ALPHA داخل بوت Telegram، وليس من المتصفح الخارجي.');spinBtn.textContent='افتح من تيليغرام';return}
-   if(!ticket){await refreshState();setError('ما في تذكرة لفة بهذا الرابط. ارجع لبوت ALPHA واضغط زر عجلة الحظ.');spinBtn.textContent='بانتظار تذكرة اللفة';return}
-   try{round=await post('/api/alpha-wheel/ticket',{ticket});$('spins').textContent=round.spinsRemaining;updateJackpot(round.jackpotAtSpin);spinBtn.textContent='🎡 لف العجلة الآن';spinBtn.disabled=false}
-   catch(e){setError(e.message);spinBtn.textContent='تعذّر تحميل النتيجة';try{await refreshState()}catch(_){}}
+ function init(){
+   if(isDemo){
+     $('userName').textContent='ALPHA DEMO';
+     $('userHandle').textContent='وضع معاينة فقط';
+     round={targetIndex:0,bonusPercent:5,award:0};
+     $('spins').textContent='1';updateJackpot(125);
+     displayBonuses([]);displayUsedBonuses([]);
+     spinBtn.textContent='🎡 لف العجلة (معاينة)';spinBtn.disabled=false;return;
+   }
+   if(!validRound){
+     $('spins').textContent='0';updateJackpot(0);
+     displayBonuses([]);displayUsedBonuses([]);
+     setError('افتح العجلة من زر بوت ALPHA للحصول على نتيجة لفة جديدة.');
+     spinBtn.textContent='بانتظار رابط اللفة';return;
+   }
+   round={targetIndex:suppliedIndex,award:suppliedAward,bonusPercent:suppliedBonus};
+   const spins=Number(params.get('spinsRemaining'));
+   $('spins').textContent=Number.isSafeInteger(spins)&&spins>=0?spins:0;
+   const jackpot=Number(params.get('jackpotAtSpin'));
+   updateJackpot(Number.isFinite(jackpot)&&jackpot>=0?jackpot:0);
+   displayBonuses(activeBonuses.filter(b=>b.expiresAt>Math.floor(Date.now()/1000)));
+   displayUsedBonuses(usedBonuses);
+   spinBtn.textContent='🎡 لف العجلة الآن';spinBtn.disabled=false;
  }
  $('spin').addEventListener('click',startSpin);
  $('resultClose').addEventListener('click',()=>$('resultModal').classList.remove('show'));
  $('historyClose').addEventListener('click',()=>$('historyModal').classList.remove('show'));
- $('historyBtn').addEventListener('click',async()=>{const rows=$('historyRows');rows.textContent='جاري جلب سجل اللفات...';$('historyModal').classList.add('show');try{
-   const d=isDemo?{history:[]}:await post('/api/alpha-wheel/history');rows.replaceChildren();if(!d.history.length){rows.innerHTML='<div class="empty">ما عندك أي لفات مسجّلة حالياً.</div>';return}
-   d.history.forEach(h=>{const div=document.createElement('div');div.className='entry';const item=document.createElement('div'),title=document.createElement('b'),date=document.createElement('small');title.textContent=h.bonusPercent?'🎁 بونص '+h.bonusPercent+'%':h.amount?'💰 '+showAmount(h.amount)+' ل.س':'🎡 حظ أوفر';date.textContent=h.roundId;item.append(title,date);const time=document.createElement('time');time.textContent=formatTime(h.createdAt);div.append(item,time);rows.appendChild(div)})
-  }catch(e){rows.textContent=e.message||'تعذر جلب السجل'}});
+ $('historyBtn').addEventListener('click',()=>{
+   const rows=$('historyRows');rows.replaceChildren();$('historyModal').classList.add('show');
+   if(!history.length){rows.innerHTML='<div class="empty">ما عندك أي لفات مسجّلة في هذا الرابط.</div>';return;}
+   history.forEach(h=>{
+     const div=document.createElement('div');div.className='entry';
+     const item=document.createElement('div'),title=document.createElement('b'),date=document.createElement('small');
+     title.textContent=h.bonusPercent?'🎁 بونص '+h.bonusPercent+'%':h.amount?'💰 '+showAmount(h.amount)+' ل.س':'🎡 حظ أوفر';
+     date.textContent='لفة ALPHA';item.append(title,date);
+     const time=document.createElement('time');time.textContent=formatTime(h.createdAt);
+     div.append(item,time);rows.appendChild(div);
+   });
+ });
  init();
 })();
 </script>
